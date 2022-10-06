@@ -4,11 +4,13 @@
 /*Documentation on accessing SL properties: https://docs.unity3d.com/2021.3/Documentation/Manual/SL-PropertiesInPrograms.html
 2D texture properties map to sampler2D variables with same name*/
 // These variables correspond with material properties
-sampler2D _MyDiffuseTexture; 
-sampler2D _MyNormalTexture;
-sampler2D _MySpecularTexture;
-sampler2D _MyRoughnessTexture;
-sampler2D _MyAOTexture;
+CBUFFER_START(UnityPerMaterial)
+	sampler2D _MyDiffuseTexture; 
+	sampler2D _MyNormalTexture;
+	sampler2D _MySpecularTexture;
+	sampler2D _MyRoughnessTexture;
+	sampler2D _MyAOTexture;
+CBUFFER_END
 
 struct VertexInput {
 	//semantics: name first part whatever you want
@@ -49,37 +51,66 @@ VertexOutput Vertex(VertexInput input) {
 }
 
 float4 Fragment(VertexOutput input) : SV_TARGET{
-//Unity hlsl sampler documentation: https://docs.unity3d.com/Manual/SL-SamplerStates.html
+	//Unity hlsl sampler documentation: https://docs.unity3d.com/Manual/SL-SamplerStates.html
 
+	//Extract information from normal map
 	float3 N = normalize(input.normalWS);
 	float3 B = normalize(input.bitangentWS);
 	float3 T = normalize(input.tangentWS);
 	float3x3 TBN = float3x3(T, B, N);
 	float3 unpackedNormal = tex2D(_MyNormalTexture, input.uv).rgb * 2 - 1;
 	input.normalWS = mul(unpackedNormal, TBN);
-
-	float3 diffuseColor = tex2D(_MyDiffuseTexture, input.uv).rgb;
 	
-	Light light = GetMainLight();
-
-	float3 lightDir = light.direction;
-	float3 lightCol = light.color;
-	float3 diffuseTerm = saturate(dot(input.normalWS,lightDir))*lightCol;
-
-	float3 dirToCam = normalize(_WorldSpaceCameraPos - input.positionWS);
-
+	//Extract information from other maps
+	float3 diffuseColor = tex2D(_MyDiffuseTexture, input.uv).rgb;
 	float specVal = tex2D(_MySpecularTexture, input.uv).r;
 	float roughVal = tex2D(_MyRoughnessTexture, input.uv).r;
+	float shine = (1.0001 - roughVal) * 256.0f;
 	float aoColor = saturate(pow(tex2D(_MyAOTexture, input.uv).r, 2));
 
-	float shine = (1.0001 - roughVal) * 256.0f;
-	//Specular term (Directional)
+	//Get vector from pixel to camera
+	float3 dirToCam = normalize(_WorldSpaceCameraPos - input.positionWS);
+
+	//Lighting information (Main light, Directional)
+	Light light = GetMainLight();
+	float3 lightDir = normalize(light.direction);
+	float3 lightCol = light.color;
+	float3 ambientTerm = float3(0.4f, 0.6f, 0.75f);// sky blue color
+
+	//Diffuse term (Main light, Directional)
+	float3 diffuseTerm = saturate(dot(input.normalWS,lightDir))*lightCol;
+
+	//Specular term (Main light, Directional)
 	float3 reflectDir = reflect(-lightDir, input.normalWS);
 	float RdotV = saturate(dot(reflectDir, dirToCam));
 	float3 specularTerm = pow(RdotV,shine) * lightCol * specVal;
-	float3 ambientTerm = float3(0.4f, 0.6f, 0.75f);
-
-	float3 totalColor =MainLightRealtimeShadow(TransformWorldToShadowCoord(input.positionWS))*diffuseColor * aoColor * (ambientTerm+diffuseTerm +specularTerm);
 	
+	//Shadow term (Main light, Directional)
+	float shadowTerm = MainLightRealtimeShadow(TransformWorldToShadowCoord(input.positionWS));
+
+	//Loop through additional lights (Point=has attenuation)
+	int addLightNum = GetAdditionalLightsCount();
+	for (int i = 0; i < addLightNum; i++) {
+		
+		Light lightTemp = GetAdditionalLight(i, input.positionWS);
+		float3 lightDirTemp = normalize(lightTemp.direction);
+		float3 lightColTemp = lightTemp.color;
+
+		//Diffuse term addition
+		diffuseTerm += lightTemp.shadowAttenuation* lightTemp.distanceAttenuation*saturate(dot(input.normalWS, lightDirTemp)) * lightColTemp;
+
+		//Specular term addition
+		float3 reflectDirTemp = reflect(-lightDirTemp, input.normalWS);
+		float RdotVTemp = saturate(dot(reflectDirTemp, dirToCam));
+		specularTerm += pow(RdotVTemp, shine) * lightColTemp * specVal;
+
+		//Shadow term addition
+		shadowTerm += AdditionalLightRealtimeShadow(i, input.positionWS, lightDirTemp);
+	}
+
+	diffuseTerm *= (shadowTerm/addLightNum);
+	float3 totalColor= diffuseColor * aoColor * (ambientTerm + diffuseTerm +specularTerm);
+
 	return  float4(totalColor,1);
+	
 }

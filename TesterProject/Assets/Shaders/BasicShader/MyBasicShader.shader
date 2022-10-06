@@ -1,13 +1,13 @@
 Shader "Unlit/MyBasicShader"
 {
     //Properties documentation: https://docs.unity3d.com/2021.3/Documentation/Manual/SL-Properties.html
-    //Basically information that would be passed in a constant buffer in DirectX
+    //Information to be held in HLSL constant buffer
     Properties{
-        _MyDiffuseTexture("Texture", 2D) = "white" {}
-        _MyNormalTexture("Texture", 2D) = "white" {}
-        _MySpecularTexture("Texture", 2D) = "white" {}
-        _MyRoughnessTexture("Texture", 2D) = "white" {}
-        _MyAOTexture("Texture", 2D) = "white" {}
+        _MyDiffuseTexture("Diffuse Texture", 2D) = "grey" {}
+        _MyNormalTexture("Normal Texture", 2D) = "bump" {}
+        _MySpecularTexture("Specular Texture", 2D) = "white" {}
+        _MyRoughnessTexture("Roughness Texture", 2D) = "white" {}
+        _MyAOTexture("AO Texture", 2D) = "white" {}
     }
     SubShader
     {
@@ -19,15 +19,15 @@ Shader "Unlit/MyBasicShader"
             Name "ForwardLit"
             //Pass tag documentation:
             //https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@11.0/manual/urp-shaders/urp-shaderlab-pass-tags.html#urp-pass-tags-lightmode
-            //Universal Forward means all sources of light are taken into consideration
             Tags {"LightMode"="UniversalForward"}
             HLSLPROGRAM
-                //Pragma directives register vertex and fragment shaders from included hlsl file
+                //Tell compiler to use Vertex and Fragment functions at correct points of rendering pipeline
                 #pragma vertex Vertex
-                #pragma fragment Fragment                
-                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
-                #pragma multi_compile _ _MAIN_LIGHT_CALCULATE_SHADOWS
-                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+                #pragma fragment Fragment
+                //Each multi compile creates a variant of shader which URP is able to choose from
+                #pragma multi_compile _MAIN_LIGHT_SHADOWS_CASCADE
+                #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+                #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
                 #include "ForwardLit.hlsl"
             ENDHLSL
         }
@@ -37,7 +37,7 @@ Shader "Unlit/MyBasicShader"
             HLSLPROGRAM
                 #pragma vertex Vertex
                 #pragma fragment Fragment
-
+ 
                 #include "ForwardLitShadows.hlsl"
             ENDHLSL
         }

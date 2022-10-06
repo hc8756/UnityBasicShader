@@ -8,13 +8,10 @@ struct VertexOutput {
 	float4 positionCS		: SV_POSITION;
 };
 
-// The vertex function. This runs for each vertex on the mesh.
-// Its primary purpose is taking vertex information from object space to clip space
 VertexOutput Vertex(VertexInput input) {
 	VertexOutput output;
 
 	VertexPositionInputs posInputs = GetVertexPositionInputs(input.positionOS);
-	//depth buffer included
 	output.positionCS = posInputs.positionCS;
 
 	return output;
