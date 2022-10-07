@@ -8,6 +8,7 @@ Shader "Unlit/MyBasicShader"
         _MySpecularTexture("Specular Texture", 2D) = "white" {}
         _MyRoughnessTexture("Roughness Texture", 2D) = "white" {}
         _MyAOTexture("AO Texture", 2D) = "white" {}
+        _MyState("Enum Index", Float) = 1
     }
     SubShader
     {
@@ -25,7 +26,7 @@ Shader "Unlit/MyBasicShader"
                 #pragma vertex Vertex
                 #pragma fragment Fragment
                 //Each multi compile creates a variant of shader which URP is able to choose from
-                #pragma multi_compile _MAIN_LIGHT_SHADOWS_CASCADE
+                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
                 #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
                 #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
                 #include "ForwardLit.hlsl"

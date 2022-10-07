@@ -10,6 +10,7 @@ CBUFFER_START(UnityPerMaterial)
 	sampler2D _MySpecularTexture;
 	sampler2D _MyRoughnessTexture;
 	sampler2D _MyAOTexture;
+	float _MyState;
 CBUFFER_END
 
 struct VertexInput {
@@ -95,9 +96,10 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 		Light lightTemp = GetAdditionalLight(i, input.positionWS);
 		float3 lightDirTemp = normalize(lightTemp.direction);
 		float3 lightColTemp = lightTemp.color;
+		float lightAttenuation = lightTemp.shadowAttenuation * lightTemp.distanceAttenuation; 
 
 		//Diffuse term addition
-		diffuseTerm += lightTemp.shadowAttenuation* lightTemp.distanceAttenuation*saturate(dot(input.normalWS, lightDirTemp)) * lightColTemp;
+		diffuseTerm += saturate(dot(input.normalWS, lightDirTemp)) * lightColTemp * lightAttenuation;
 
 		//Specular term addition
 		float3 reflectDirTemp = reflect(-lightDirTemp, input.normalWS);
@@ -108,9 +110,13 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 		shadowTerm += AdditionalLightRealtimeShadow(i, input.positionWS, lightDirTemp);
 	}
 
-	diffuseTerm *= (shadowTerm/addLightNum);
+	diffuseTerm *= (shadowTerm/5);
 	float3 totalColor= diffuseColor * aoColor * (ambientTerm + diffuseTerm +specularTerm);
-
-	return  float4(totalColor,1);
+	if (_MyState == 1) {
+		return  float4(totalColor,1);
+	}
 	
+	else {
+		return float4(1, 1, 1, 1);
+	}
 }
