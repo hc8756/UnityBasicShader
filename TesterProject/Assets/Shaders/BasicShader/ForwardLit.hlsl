@@ -48,6 +48,7 @@ VertexOutput Vertex(VertexInput input) {
 	output.normalWS = normInputs.normalWS;
 	output.tangentWS = normInputs.tangentWS;
 	output.bitangentWS = normInputs.bitangentWS;
+
 	return output;
 }
 
@@ -60,15 +61,15 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 	float3 T = normalize(input.tangentWS);
 	float3x3 TBN = float3x3(T, B, N);
 	float3 unpackedNormal = tex2D(_MyNormalTexture, input.uv).rgb * 2 - 1;
-	input.normalWS = mul(unpackedNormal, TBN);
+	input.normalWS =mul(unpackedNormal, TBN);
 	
 	//Extract information from other maps
 	float3 diffuseColor = tex2D(_MyDiffuseTexture, input.uv).rgb;
+	float aoColor = tex2D(_MyAOTexture, input.uv).r;
 	float specVal = tex2D(_MySpecularTexture, input.uv).r;
 	float roughVal = tex2D(_MyRoughnessTexture, input.uv).r;
 	float shine = (1.0001 - roughVal) * 256.0f;
-	float aoColor = saturate(pow(tex2D(_MyAOTexture, input.uv).r, 2));
-
+	
 	//Get vector from pixel to camera
 	float3 dirToCam = normalize(_WorldSpaceCameraPos - input.positionWS);
 
@@ -79,7 +80,7 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 	float3 ambientTerm = float3(0.4f, 0.6f, 0.75f);// sky blue color
 
 	//Diffuse term (Main light, Directional)
-	float3 diffuseTerm = saturate(dot(input.normalWS,lightDir))*lightCol;
+	float3 diffuseTerm = saturate(dot(input.normalWS,lightDir)) * lightCol;
 
 	//Specular term (Main light, Directional)
 	float3 reflectDir = reflect(-lightDir, input.normalWS);
@@ -89,34 +90,53 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 	//Shadow term (Main light, Directional)
 	float shadowTerm = MainLightRealtimeShadow(TransformWorldToShadowCoord(input.positionWS));
 
-	//Loop through additional lights (Point=has attenuation)
-	int addLightNum = GetAdditionalLightsCount();
-	for (int i = 0; i < addLightNum; i++) {
-		
-		Light lightTemp = GetAdditionalLight(i, input.positionWS);
-		float3 lightDirTemp = normalize(lightTemp.direction);
-		float3 lightColTemp = lightTemp.color;
-		float lightAttenuation = lightTemp.shadowAttenuation * lightTemp.distanceAttenuation; 
+	//Declare return value
+	float3 totalColor;
 
-		//Diffuse term addition
-		diffuseTerm += saturate(dot(input.normalWS, lightDirTemp)) * lightColTemp * lightAttenuation;
+	//Alter return value based on switch statement (determined by C# script)
+	[branch] switch (_MyState)
+	{
+		case 1:
+			totalColor = float3(0, 0, 0);
+			break;
+		case 2:
+			totalColor = diffuseColor * ambientTerm;
+			break;
+		case 3:
+			diffuseTerm *= (shadowTerm/5);
+			totalColor = diffuseColor * aoColor * (ambientTerm + diffuseTerm);
+			break;
+		case 4:
+			diffuseTerm *= (shadowTerm / 5);
+			totalColor = diffuseColor * aoColor * (ambientTerm + diffuseTerm + specularTerm);
+			break;
+		case 5:
+			//Loop through additional lights (Point=has attenuation)
+			int addLightNum = GetAdditionalLightsCount();
+			for (int i = 0; i < addLightNum; i++) {
 
-		//Specular term addition
-		float3 reflectDirTemp = reflect(-lightDirTemp, input.normalWS);
-		float RdotVTemp = saturate(dot(reflectDirTemp, dirToCam));
-		specularTerm += pow(RdotVTemp, shine) * lightColTemp * specVal;
+				Light lightTemp = GetAdditionalLight(i, input.positionWS);
+				float3 lightDirTemp = normalize(lightTemp.direction);
+				float3 lightColTemp = lightTemp.color;
+				float lightAttenuation = lightTemp.shadowAttenuation * lightTemp.distanceAttenuation;
 
-		//Shadow term addition
-		shadowTerm += AdditionalLightRealtimeShadow(i, input.positionWS, lightDirTemp);
+				//Diffuse term addition
+				diffuseTerm += saturate(dot(input.normalWS, lightDirTemp)) * lightColTemp * lightAttenuation;
+
+				//Specular term addition
+				float3 reflectDirTemp = reflect(-lightDirTemp, input.normalWS);
+				float RdotVTemp = saturate(dot(reflectDirTemp, dirToCam));
+				specularTerm += pow(RdotVTemp, shine) * lightColTemp * specVal;
+
+				//Shadow term addition
+				shadowTerm += AdditionalLightRealtimeShadow(i, input.positionWS, lightDirTemp);
+			}
+			diffuseTerm *= (shadowTerm / 5);
+			totalColor = diffuseColor * aoColor * (ambientTerm + diffuseTerm + specularTerm);
+			break;
+		default:
+			totalColor = float3(0, 0, 0);
+			break;
 	}
-
-	diffuseTerm *= (shadowTerm/5);
-	float3 totalColor= diffuseColor * aoColor * (ambientTerm + diffuseTerm +specularTerm);
-	if (_MyState == 1) {
-		return  float4(totalColor,1);
-	}
-	
-	else {
-		return float4(1, 1, 1, 1);
-	}
+	return  float4(totalColor, 1);
 }
