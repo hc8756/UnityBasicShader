@@ -43,4 +43,6 @@ Shader "Unlit/MyBasicShader"
             ENDHLSL
         }
     }
+
+    Fallback "Diffuse"
 }

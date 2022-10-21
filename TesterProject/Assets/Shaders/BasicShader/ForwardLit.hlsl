@@ -16,7 +16,7 @@ CBUFFER_END
 struct VertexInput {
 	//semantics: name first part whatever you want
 	//second part has to follow this convention: https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics
-	float3 positionOS		: POSITION; 
+	float3 positionOS		: POSITION0; 
 	float2 uv				: TEXCOORD;
 	float3 normalOS			: NORMAL;
 	float4 tangentOS		: TANGENT;
@@ -24,7 +24,7 @@ struct VertexInput {
 
 struct VertexOutput {
 	float4 positionCS		: SV_POSITION;
-	float3 positionWS		: WORLD_POSITION;
+	float3 positionWS		: POSITION1;
 	float2 uv				: TEXCOORD;
 	float3 normalWS			: NORMAL;
 	float3 tangentWS		: TANGENT;
@@ -74,6 +74,7 @@ float4 Fragment(VertexOutput input) : SV_TARGET{
 	float3 dirToCam = normalize(_WorldSpaceCameraPos - input.positionWS);
 
 	//Lighting information (Main light, Directional)
+	//light struct can be found in RealtimeLights.hlsl
 	Light light = GetMainLight();
 	float3 lightDir = normalize(light.direction);
 	float3 lightCol = light.color;
