@@ -3,7 +3,7 @@ Shader "Unlit/ShaderReplica"
 	Properties{
 		_MyDiffuseTexture("Diffuse Texture", 2D) = "grey" {}
 		_MyNormalMap("Normal Map", 2D) = "bump" {}
-		_MySpecularTexture("Specular Map", 2D) = "grey" {}
+		_MySpecularTexture("Specular Map", 2D) = "black" {}
 	}
 
 

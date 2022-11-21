@@ -69,7 +69,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MySpecularTexture:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 84e89fbf1a49f9a488a189f8a2fc4cc0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
@@ -113,7 +113,7 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _Metallic: 0
-    - _MyState: 4
+    - _MyState: 5
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueOffset: 0

@@ -5,7 +5,7 @@ Shader "Unlit/MyBasicShader"
     Properties{
         _MyDiffuseTexture("Diffuse Texture", 2D) = "grey" {}
         _MyNormalTexture("Normal Texture", 2D) = "bump" {}
-        _MySpecularTexture("Specular Texture", 2D) = "white" {}
+        _MySpecularTexture("Specular Texture", 2D) = "black" {}
         _MyRoughnessTexture("Roughness Texture", 2D) = "white" {}
         _MyAOTexture("AO Texture", 2D) = "white" {}
         _MyState("Enum Index", Float) = 1
